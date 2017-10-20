@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# This script installs go on Scrutinizer for github repositories
+# To use:
+# source <(curl -fsSL https://raw.githubusercontent.com/phayes/go-scrutinize/master/install-golang)
+
+export PROJECT=$(echo $SCRUTINIZER_PROJECT | sed 's/^g/github.com/' | sed 's/^b/bitbucket.org/')
+export DOMAIN=$(echo $PROJECT | cut -d'/' -f1)
+export OWNER=$(echo $PROJECT | cut -d'/' -f2)
+export PACKAGE=$(echo $PROJECT | cut -d'/' -f3)
+
+# Install go
+wget https://storage.googleapis.com/golang/go1.9.1.linux-amd64.tar.gz
+tar -xf go1.9.1.linux-amd64.tar.gz
+sudo mv go /usr/local
+
+# Install bzr
+sudo apt-get -y update
+sudo apt-get -y install bzr
+
+# Set-up gopath and goroot
+export GOROOT=/usr/local/go
+mkdir ~/go
+export GOPATH=$HOME/go
+mkdir -p $GOPATH/src/$DOMAIN/$OWNER
+ln -s ~/build $GOPATH/src/$DOMAIN/$OWNER/$PACKAGE
+export PROJECTPATH=$GOPATH/src/$PROJECT
+
+# Add bin directories to PATH
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+
+# Install coverage tools
+go get github.com/phayes/go-scrutinize
+
+# Set-up github for private go dependancies
+# bitbucket should already work
+if [[ $DOMAIN == "github.com" && $GITHUB_ACCESS_TOKEN != "" ]] 
+then
+  git config --global --unset url."ssh://git@github.com/".insteadOf
+  git config --global url.https://$GITHUB_ACCESS_TOKEN@github.com/.insteadOf "https://github.com/";
+fi
